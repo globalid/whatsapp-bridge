@@ -39,13 +39,16 @@ func (wa *WhatsAppClient) getChatInfo(ctx context.Context, portalJID types.JID, 
 		} else {
 			return nil, fmt.Errorf("broadcast list bridging is currently not supported")
 		}
-	case types.GroupServer:
-		info, err := wa.Client.GetGroupInfo(ctx, portalJID)
-		if err != nil {
-			return nil, err
-		}
-		wrapped = wa.wrapGroupInfo(ctx, info)
-		wrapped.ExtraUpdates = bridgev2.MergeExtraUpdaters(wrapped.ExtraUpdates, updatePortalLastSyncAt)
+    case types.GroupServer:
+        if wa.Main.Config.IgnoreGroupChats {
+            return nil, fmt.Errorf("group chat bridging is disabled")
+        }
+        info, err := wa.Client.GetGroupInfo(ctx, portalJID)
+        if err != nil {
+            return nil, err
+        }
+        wrapped = wa.wrapGroupInfo(ctx, info)
+        wrapped.ExtraUpdates = bridgev2.MergeExtraUpdaters(wrapped.ExtraUpdates, updatePortalLastSyncAt)
 	case types.NewsletterServer:
 		info, err := wa.Client.GetNewsletterInfo(ctx, portalJID)
 		if err != nil {
