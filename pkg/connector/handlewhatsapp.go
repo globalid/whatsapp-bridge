@@ -281,6 +281,10 @@ func (wa *WhatsAppClient) handleWAMessage(ctx context.Context, evt *events.Messa
 	if evt.Info.Chat == types.StatusBroadcastJID && !wa.Main.Config.EnableStatusBroadcast {
 		return
 	}
+	if wa.Main.Config.IgnoreGroupChats && evt.Info.Chat.Server == types.GroupServer {
+		wa.UserLogin.Log.Debug().Msg("Ignoring group chat message (disabled in config)")
+		return
+	}
 	if evt.Info.IsFromMe &&
 		evt.Message.GetProtocolMessage().GetHistorySyncNotification() != nil &&
 		wa.Main.Bridge.Config.Backfill.Enabled &&
@@ -346,6 +350,10 @@ func (wa *WhatsAppClient) handleWAUndecryptableMessage(evt *events.Undecryptable
 }
 
 func (wa *WhatsAppClient) handleWAReceipt(evt *events.Receipt) (success bool) {
+	if wa.Main.Config.IgnoreGroupChats && evt.Chat.Server == types.GroupServer {
+		wa.UserLogin.Log.Debug().Msg("Ignoring group chat receipt (disabled in config)")
+		return true
+	}
 	if evt.Chat.Server == types.HiddenUserServer && evt.Sender.ToNonAD() == evt.Chat && evt.SenderAlt.Server == types.DefaultUserServer {
 		wa.UserLogin.Log.Debug().
 			Stringer("lid", evt.Sender).
@@ -610,6 +618,10 @@ func (wa *WhatsAppClient) handleWAPictureUpdate(evt *events.Picture) {
 }
 
 func (wa *WhatsAppClient) handleWAGroupInfoChange(evt *events.GroupInfo) {
+	if wa.Main.Config.IgnoreGroupChats && evt.JID.Server == types.GroupServer {
+		wa.UserLogin.Log.Debug().Stringer("group_jid", evt.JID).Msg("Ignoring group info change (disabled in config)")
+		return
+	}
 	eventMeta := simplevent.EventMeta{
 		Type:         bridgev2.RemoteEventChatInfoChange,
 		LogContext:   nil,
@@ -632,6 +644,10 @@ func (wa *WhatsAppClient) handleWAGroupInfoChange(evt *events.GroupInfo) {
 }
 
 func (wa *WhatsAppClient) handleWAJoinedGroup(evt *events.JoinedGroup) {
+	if wa.Main.Config.IgnoreGroupChats {
+		wa.UserLogin.Log.Debug().Stringer("group_jid", evt.JID).Msg("Ignoring joined group event (disabled in config)")
+		return
+	}
 	wa.Main.Bridge.QueueRemoteEvent(wa.UserLogin, &simplevent.ChatResync{
 		EventMeta: simplevent.EventMeta{
 			Type:         bridgev2.RemoteEventChatResync,
