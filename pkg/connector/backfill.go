@@ -167,6 +167,9 @@ func (wa *WhatsAppClient) handleWAHistorySync(ctx context.Context, evt *waHistor
 		} else if jid.Server == types.BroadcastServer {
 			log.Debug().Stringer("chat_jid", jid).Msg("Skipping broadcast list in history sync")
 			continue
+		} else if wa.Main.Config.IgnoreGroupChats && jid.Server == types.GroupServer {
+			log.Debug().Stringer("chat_jid", jid).Msg("Skipping group chat in history sync (disabled in config)")
+			continue
 		}
 		totalMessageCount += len(conv.GetMessages())
 		log := log.With().
@@ -296,6 +299,10 @@ func (wa *WhatsAppClient) createPortalsFromHistorySync(ctx context.Context) {
 			continue
 		} else if conv.ChatJID == types.PSAJID {
 			// We don't currently support new PSAs, so don't bother backfilling them either
+			wg.Done()
+			continue
+		} else if wa.Main.Config.IgnoreGroupChats && conv.ChatJID.Server == types.GroupServer {
+			// Skip group chats completely
 			wg.Done()
 			continue
 		}
